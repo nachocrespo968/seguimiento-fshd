@@ -1,54 +1,180 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>FSHD App Demo</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FSHD Seguimiento</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-body{
-font-family: Arial, sans-serif;
-background:#f5efe6;
-color:#2b2b2b;
-padding:40px;
-}
-.card{
-background:white;
-border-radius:16px;
-padding:24px;
-max-width:800px;
-margin:auto;
-box-shadow:0 4px 12px rgba(0,0,0,0.08);
-}
-.badge{
-display:inline-block;
-padding:8px 14px;
-border-radius:999px;
-background:#c7d7b5;
-margin-right:8px;
-}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Arial,sans-serif;background:#f5efe6;color:#2b2b2b;padding:20px}
+.container{max-width:800px;margin:auto;background:#fff;border-radius:16px;padding:24px;box-shadow:0 4px 12px rgba(0,0,0,0.08)}
+h1{color:#4a7c59;margin-bottom:16px}
+.btn{display:inline-block;padding:12px 24px;margin:8px 4px;background:#4a7c59;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:16px}
+.btn:hover{background:#3d6849}
+.btn-secondary{background:#6c757d}
+.btn-secondary:hover{background:#5a6268}
+input,select,textarea{width:100%;padding:12px;margin:8px 0;border:1px solid #ddd;border-radius:8px;font-size:14px}
+label{display:block;margin-top:12px;font-weight:bold}
+.hidden{display:none}
+.alert{padding:12px;margin:16px 0;border-radius:8px;background:#d4edda;color:#155724;border:1px solid #c3e6cb}
+.alert-error{background:#f8d7da;color:#721c24;border-color:#f5c6cb}
+.section{margin:24px 0;padding:20px;background:#f8f9fa;border-radius:8px}
 </style>
 </head>
 <body>
-<div class="card">
-<h1>FSHD Seguimiento Diario</h1>
-<p>Demo funcional de la app de seguimiento fisio-paciente.</p>
-
-<div class="badge">Paciente</div>
-<div class="badge">Admin</div>
-
-<h2>Funciones incluidas</h2>
-<ul>
-<li>Login por roles</li>
-<li>Consentimiento obligatorio</li>
-<li>Semáforo clínico</li>
-<li>Registro pre y post sesión</li>
-<li>Estado emocional y estrés</li>
-<li>Panel profesional</li>
-<li>Sesiones A/B</li>
-<li>Dinamometría mensual</li>
-</ul>
-
-<p><strong>Demo generada correctamente.</strong></p>
+<div class="container" id="app">
+<div id="loginScreen">
+<h1>🏥 FSHD Seguimiento Diario</h1>
+<p>Sistema de seguimiento fisioterapeuta-paciente con base de datos en tiempo real</p>
+<div class="section">
+<h2>Iniciar Sesión</h2>
+<input type="email" id="loginEmail" placeholder="Email">
+<input type="password" id="loginPassword" placeholder="Contraseña">
+<button class="btn" onclick="login()">Entrar</button>
+<p style="margin-top:16px"><small>¿Nuevo usuario? Regístrate primero</small></p>
 </div>
+<div class="section">
+<h2>Registro</h2>
+<input type="text" id="regName" placeholder="Nombre completo">
+<input type="email" id="regEmail" placeholder="Email">
+<input type="password" id="regPassword" placeholder="Contraseña">
+<select id="regRole">
+<option value="patient">Paciente</option>
+<option value="admin">Profesional</option>
+</select>
+<button class="btn" onclick="register()">Registrarse</button>
+</div>
+<div id="message"></div>
+</div>
+
+<div id="mainScreen" class="hidden">
+<h1>Panel de Usuario</h1>
+<div id="userInfo"></div>
+<button class="btn btn-secondary" onclick="logout()">Cerrar Sesión</button>
+<div id="patientPanel" class="hidden">
+<div class="section">
+<h2>📝 Registro Diario</h2>
+<label>Tipo:</label>
+<select id="entryType">
+<option value="pre">Pre-sesión</option>
+<option value="post">Post-sesión</option>
+</select>
+<label>Fatiga (1-10):</label>
+<input type="number" id="fatigue" min="1" max="10">
+<label>Dolor (1-10):</label>
+<input type="number" id="pain" min="1" max="10">
+<label>Ánimo (1-10):</label>
+<input type="number" id="mood" min="1" max="10">
+<label>Notas:</label>
+<textarea id="notes" rows="3"></textarea>
+<button class="btn" onclick="saveEntry()">Guardar Registro</button>
+</div>
+<div id="entryMessage"></div>
+</div>
+<div id="adminPanel" class="hidden">
+<div class="section">
+<h2>📊 Panel Profesional</h2>
+<button class="btn" onclick="loadAllData()">Ver Datos de Pacientes</button>
+<div id="dataDisplay"></div>
+</div>
+</div>
+</div>
+</div>
+
+<script>
+const SUPABASE_URL='https://ncmrtimuqifhtirziimz.supabase.co'
+const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jbXJ0aW11cWlmaHRpcnppaW16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgxOTY5NTAsImV4cCI6MjA2Mzc3Mjk1MH0.yKWKmKnQdD2Fh3yEDhiOZUOiHlr0PBK1v-RA6JEhKPw'
+const supabase=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY)
+
+let currentUser=null
+
+async function register(){
+const name=document.getElementById('regName').value
+const email=document.getElementById('regEmail').value
+const password=document.getElementById('regPassword').value
+const role=document.getElementById('regRole').value
+if(!email||!password){showMessage('Completa todos los campos','error');return}
+const {data,error}=await supabase.auth.signUp({
+email,password,
+options:{data:{full_name:name,role}}
+})
+if(error){showMessage('Error: '+error.message,'error')}
+else{showMessage('Registro exitoso. Revisa tu email para confirmar.')}
+}
+
+async function login(){
+const email=document.getElementById('loginEmail').value
+const password=document.getElementById('loginPassword').value
+if(!email||!password){showMessage('Completa email y contraseña','error');return}
+const {data,error}=await supabase.auth.signInWithPassword({email,password})
+if(error){showMessage('Error: '+error.message,'error')}
+else{await checkUser()}
+}
+
+async function logout(){
+await supabase.auth.signOut()
+currentUser=null
+document.getElementById('loginScreen').classList.remove('hidden')
+document.getElementById('mainScreen').classList.add('hidden')
+}
+
+async function checkUser(){
+const {data:{user}}=await supabase.auth.getUser()
+if(!user){return}
+currentUser=user
+const {data:profile}=await supabase.from('profiles').select('*').eq('id',user.id).single()
+document.getElementById('loginScreen').classList.add('hidden')
+document.getElementById('mainScreen').classList.remove('hidden')
+document.getElementById('userInfo').innerHTML=`<p>👤 <strong>${profile?.full_name||user.email}</strong> (${profile?.role||'patient'})</p>`
+if(profile?.role==='admin'){
+document.getElementById('adminPanel').classList.remove('hidden')
+document.getElementById('patientPanel').classList.add('hidden')
+}else{
+document.getElementById('patientPanel').classList.remove('hidden')
+document.getElementById('adminPanel').classList.add('hidden')
+}
+}
+
+async function saveEntry(){
+if(!currentUser){return}
+const entry={
+patient_id:currentUser.id,
+entry_type:document.getElementById('entryType').value,
+fatigue:parseInt(document.getElementById('fatigue').value)||null,
+pain:parseInt(document.getElementById('pain').value)||null,
+mood:parseInt(document.getElementById('mood').value)||null,
+notes:document.getElementById('notes').value||null
+}
+const {error}=await supabase.from('daily_entries').insert([entry])
+if(error){showEntryMessage('Error: '+error.message,'error')}
+else{showEntryMessage('✅ Registro guardado correctamente');document.getElementById('notes').value=''}
+}
+
+async function loadAllData(){
+const {data,error}=await supabase.from('daily_entries').select(`
+*,
+profiles(full_name,email)
+`).order('created_at',{ascending:false}).limit(50)
+if(error){document.getElementById('dataDisplay').innerHTML='<p class="alert-error">Error: '+error.message+'</p>';return}
+let html='<h3>Últimos 50 registros</h3><table style="width:100%;border-collapse:collapse;margin-top:16px"><tr style="background:#4a7c59;color:#fff"><th style="padding:8px;border:1px solid #ddd">Paciente</th><th style="padding:8px;border:1px solid #ddd">Fecha</th><th style="padding:8px;border:1px solid #ddd">Tipo</th><th style="padding:8px;border:1px solid #ddd">Fatiga</th><th style="padding:8px;border:1px solid #ddd">Dolor</th><th style="padding:8px;border:1px solid #ddd">Ánimo</th></tr>'
+data.forEach(e=>{
+html+=`<tr><td style="padding:8px;border:1px solid #ddd">${e.profiles?.full_name||e.profiles?.email||'N/A'}</td><td style="padding:8px;border:1px solid #ddd">${new Date(e.created_at).toLocaleDateString()}</td><td style="padding:8px;border:1px solid #ddd">${e.entry_type}</td><td style="padding:8px;border:1px solid #ddd">${e.fatigue||'-'}</td><td style="padding:8px;border:1px solid #ddd">${e.pain||'-'}</td><td style="padding:8px;border:1px solid #ddd">${e.mood||'-'}</td></tr>`
+})
+html+='</table>'
+document.getElementById('dataDisplay').innerHTML=html
+}
+
+function showMessage(msg,type='success'){
+document.getElementById('message').innerHTML=`<div class="alert ${type==='error'?'alert-error':''}">${msg}</div>`
+}
+
+function showEntryMessage(msg,type='success'){
+document.getElementById('entryMessage').innerHTML=`<div class="alert ${type==='error'?'alert-error':''}">${msg}</div>`
+setTimeout(()=>document.getElementById('entryMessage').innerHTML='',3000)
+}
+
+checkUser()
+</script>
 </body>
 </html>
