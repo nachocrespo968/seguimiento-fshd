@@ -122,6 +122,8 @@ if(!user){return}
 currentUser=user
 const {data:profile}=await supabase.from('profiles').select('*').eq('id',user.id).single()
 document.getElementById('loginScreen').classList.add('hidden')
+  console.log('DEBUG checkUser - profile:', profile)
+  showMessage('DEBUG: Perfil cargado: ' + (profile ? profile.role : 'NULL'), 'error')
 document.getElementById('mainScreen').classList.remove('hidden')
 document.getElementById('userInfo').innerHTML=`<p>👤 <strong>${profile?.full_name||user.email}</strong> (${profile?.role||'patient'})</p>`
 if(profile?.role==='admin'){
