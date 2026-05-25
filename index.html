@@ -120,10 +120,8 @@ async function checkUser(){
 const {data:{user}}=await supabase.auth.getUser()
 if(!user){return}
 currentUser=user
-const {data:profile}=await supabase.from('profiles').select('*').eq('id',user.id).single()
-document.getElementById('loginScreen').classList.add('hidden')
-  console.log('DEBUG checkUser - profile:', profile)
-  showMessage('DEBUG: Perfil cargado: ' + (profile ? profile.role : 'NULL'), 'error')
+const {data:profile,error:profileError}=await supabase.from('profiles').select('*').eq('id',user.id).single()
+  if(profileError||!profile){showMessage('Error al cargar perfil: '+(profileError?.message||'Perfil no encontrado'),'error');return}
 document.getElementById('mainScreen').classList.remove('hidden')
 document.getElementById('userInfo').innerHTML=`<p>👤 <strong>${profile?.full_name||user.email}</strong> (${profile?.role||'patient'})</p>`
 if(profile?.role==='admin'){
