@@ -39,10 +39,7 @@ label{display:block;margin-top:12px;font-weight:bold}
 <input type="text" id="regName" placeholder="Nombre completo">
 <input type="email" id="regEmail" placeholder="Email">
 <input type="password" id="regPassword" placeholder="Contraseña">
-<select id="regRole">
-<option value="patient">Paciente</option>
-<option value="admin">Profesional</option>
-</select>
+
 <button class="btn" onclick="register()">Registrarse</button>
 </div>
 <div id="message"></div>
@@ -93,7 +90,7 @@ async function register(){
 const name=document.getElementById('regName').value
 const email=document.getElementById('regEmail').value
 const password=document.getElementById('regPassword').value
-const role=document.getElementById('regRole').value
+const role='patient'
 if(!email||!password){showMessage('Completa todos los campos','error');return}
 const {data,error}=await supabase.auth.signUp({
 email,password,
