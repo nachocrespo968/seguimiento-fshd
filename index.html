@@ -82,7 +82,7 @@ label{display:block;margin-top:12px;font-weight:bold}
 <script>
 const SUPABASE_URL='https://ncmrtimuqifhtirziimz.supabase.co'
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jbXJ0aW11cWlmaHRpcnppaW16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgxOTY5NTAsImV4cCI6MjA2Mzc3Mjk1MH0.yKWKmKnQdD2Fh3yEDhiOZUOiHlr0PBK1v-RA6JEhKPw'
-const supabase=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY)
+const supabase=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY)
 
 let currentUser=null
 
