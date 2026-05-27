@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FSHD Seguimiento</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"/dist/umd/supabase.js></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:Arial,sans-serif;background:#f5efe6;color:#2b2b2b;padding:20px}
@@ -39,12 +39,10 @@ label{display:block;margin-top:12px;font-weight:bold}
 <input type="text" id="regName" placeholder="Nombre completo">
 <input type="email" id="regEmail" placeholder="Email">
 <input type="password" id="regPassword" placeholder="Contraseña">
-
 <button class="btn" onclick="register()">Registrarse</button>
 </div>
 <div id="message"></div>
 </div>
-
 <div id="mainScreen" class="hidden">
 <h1>Panel de Usuario</h1>
 <div id="userInfo"></div>
@@ -53,10 +51,7 @@ label{display:block;margin-top:12px;font-weight:bold}
 <div class="section">
 <h2>📝 Registro Diario</h2>
 <label>Tipo:</label>
-<select id="entryType">
-<option value="pre">Pre-sesión</option>
-<option value="post">Post-sesión</option>
-</select>
+<select id="entryType"><option value="pre">Pre-sesión</option><option value="post">Post-sesión</option></select>
 <label>Fatiga (1-10):</label>
 <input type="number" id="fatigue" min="1" max="10">
 <label>Dolor (1-10):</label>
@@ -66,8 +61,8 @@ label{display:block;margin-top:12px;font-weight:bold}
 <label>Notas:</label>
 <textarea id="notes" rows="3"></textarea>
 <button class="btn" onclick="saveEntry()">Guardar Registro</button>
-</div>
 <div id="entryMessage"></div>
+</div>
 </div>
 <div id="adminPanel" class="hidden">
 <div class="section">
@@ -78,14 +73,11 @@ label{display:block;margin-top:12px;font-weight:bold}
 </div>
 </div>
 </div>
-
 <script>
 const SUPABASE_URL='https://ncmrtimuqifhtirziimz.supabase.co'
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jbXJ0aW11cWlmaHRpcnppaW16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgxOTY5NTAsImV4cCI6MjA2Mzc3Mjk1MH0.yKWKmKnQdD2Fh3yEDhiOZUOiHlr0PBK1v-RA6JEhKPw'
 const supabase=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY)
-
 let currentUser=null
-
 async function register(){
 const name=document.getElementById('regName').value
 const email=document.getElementById('regEmail').value
@@ -99,29 +91,33 @@ options:{data:{full_name:name,role}}
 if(error){showMessage('Error: '+error.message,'error')}
 else{showMessage('Registro exitoso. Revisa tu email para confirmar.')}
 }
-
 async function login(){
 const email=document.getElementById('loginEmail').value
 const password=document.getElementById('loginPassword').value
 if(!email||!password){showMessage('Completa email y contraseña','error');return}
 const {data,error}=await supabase.auth.signInWithPassword({email,password})
-if(error){showMessage('Error: '+error.message,'error')}
-else{await checkUser()}
+if(error){showMessage('Error: '+error.message,'error');return}
+if(data&&data.user){
+await loadUserPanel(data.user)
+}else{
+showMessage('Error: no se pudo obtener el usuario','error')
 }
-
+}
 async function logout(){
 await supabase.auth.signOut()
 currentUser=null
 document.getElementById('loginScreen').classList.remove('hidden')
 document.getElementById('mainScreen').classList.add('hidden')
 }
-
-async function checkUser(){
-const {data:{user}}=await supabase.auth.getUser()
-if(!user){return}
+async function loadUserPanel(user){
 currentUser=user
 const {data:profile,error:profileError}=await supabase.from('profiles').select('*').eq('id',user.id).single()
-  if(profileError||!profile){showMessage('Error al cargar perfil: '+(profileError?.message||'Perfil no encontrado'),'error');return}
+if(profileError||!profile){
+showMessage('Error al cargar perfil: '+(profileError?.message||'Perfil no encontrado'),'error')
+console.error('Profile error:',profileError)
+return
+}
+document.getElementById('loginScreen').classList.add('hidden')
 document.getElementById('mainScreen').classList.remove('hidden')
 document.getElementById('userInfo').innerHTML=`<p>👤 <strong>${profile?.full_name||user.email}</strong> (${profile?.role||'patient'})</p>`
 if(profile?.role==='admin'){
@@ -132,7 +128,11 @@ document.getElementById('patientPanel').classList.remove('hidden')
 document.getElementById('adminPanel').classList.add('hidden')
 }
 }
-
+async function checkUser(){
+const {data:{user}}=await supabase.auth.getUser()
+if(!user){return}
+await loadUserPanel(user)
+}
 async function saveEntry(){
 if(!currentUser){return}
 const entry={
@@ -147,7 +147,6 @@ const {error}=await supabase.from('daily_entries').insert([entry])
 if(error){showEntryMessage('Error: '+error.message,'error')}
 else{showEntryMessage('✅ Registro guardado correctamente');document.getElementById('notes').value=''}
 }
-
 async function loadAllData(){
 const {data,error}=await supabase.from('daily_entries').select(`
 *,
@@ -161,16 +160,13 @@ html+=`<tr><td style="padding:8px;border:1px solid #ddd">${e.profiles?.full_name
 html+='</table>'
 document.getElementById('dataDisplay').innerHTML=html
 }
-
 function showMessage(msg,type='success'){
 document.getElementById('message').innerHTML=`<div class="alert ${type==='error'?'alert-error':''}">${msg}</div>`
 }
-
 function showEntryMessage(msg,type='success'){
 document.getElementById('entryMessage').innerHTML=`<div class="alert ${type==='error'?'alert-error':''}">${msg}</div>`
 setTimeout(()=>document.getElementById('entryMessage').innerHTML='',3000)
 }
-
 checkUser()
 </script>
 </body>
