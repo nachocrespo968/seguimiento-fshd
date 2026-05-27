@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FSHD Seguimiento</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:Arial,sans-serif;background:#f5efe6;color:#2b2b2b;padding:20px}
@@ -32,7 +31,7 @@ label{display:block;margin-top:12px;font-weight:bold}
 <h2>Iniciar Sesión</h2>
 <input type="email" id="loginEmail" placeholder="Email">
 <input type="password" id="loginPassword" placeholder="Contraseña">
-<button class="btn" onclick="login()">Entrar</button>
+<button class="btn" id="loginBtn">Entrar</button>
 <p style="margin-top:16px"><small>¿Nuevo usuario? Regístrate primero</small></p>
 </div>
 <div class="section">
@@ -40,15 +39,15 @@ label{display:block;margin-top:12px;font-weight:bold}
 <input type="text" id="regName" placeholder="Nombre completo">
 <input type="email" id="regEmail" placeholder="Email">
 <input type="password" id="regPassword" placeholder="Contraseña">
-<button class="btn" onclick="register()">Registrarse</button>
+<button class="btn" id="regBtn">Registrarse</button>
 </div>
 <div id="message"></div>
-<div id="debug">Debug: cargando...</div>
+<div id="debug">Iniciando...</div>
 </div>
 <div id="mainScreen" class="hidden">
 <h1>Panel de Usuario</h1>
 <div id="userInfo"></div>
-<button class="btn btn-secondary" onclick="logout()">Cerrar Sesión</button>
+<button class="btn btn-secondary" id="logoutBtn">Cerrar Sesión</button>
 <div id="patientPanel" class="hidden">
 <div class="section">
 <h2>📝 Registro Diario</h2>
@@ -62,133 +61,151 @@ label{display:block;margin-top:12px;font-weight:bold}
 <input type="number" id="mood" min="1" max="10">
 <label>Notas:</label>
 <textarea id="notes" rows="3"></textarea>
-<button class="btn" onclick="saveEntry()">Guardar Registro</button>
+<button class="btn" id="saveBtn">Guardar Registro</button>
 <div id="entryMessage"></div>
 </div>
 </div>
 <div id="adminPanel" class="hidden">
 <div class="section">
 <h2>📊 Panel Profesional</h2>
-<button class="btn" onclick="loadAllData()">Ver Datos de Pacientes</button>
+<button class="btn" id="loadDataBtn">Ver Datos de Pacientes</button>
 <div id="dataDisplay"></div>
 </div>
 </div>
 </div>
 </div>
 <script>
-const SUPABASE_URL='https://ncmrtimuqifhtirziimz.supabase.co'
-const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jbXJ0aW11cWlmaHRpcnppaW16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgxOTY5NTAsImV4cCI6MjA2Mzc3Mjk1MH0.yKWKmKnQdD2Fh3yEDhiOZUOiHlr0PBK1v-RA6JEhKPw'
-let supabase
-try{
-  supabase=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY)
-  log('Supabase inicializado OK')
-}catch(e){
-  log('ERROR init: '+e.message)
+const SUPABASE_URL='https://ncmrtimuqifhtirziimz.supabase.co';
+const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jbXJ0aW11cWlmaHRpcnppaW16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgxOTY5NTAsImV4cCI6MjA2Mzc3Mjk1MH0.yKWKmKnQdD2Fh3yEDhiOZUOiHlr0PBK1v-RA6JEhKPw';
+let db=null;
+let currentUser=null;
+function log(m){
+  const d=document.getElementById('debug');
+  if(d){d.textContent=d.textContent+' | '+m;}
+  console.log(m);
 }
-let currentUser=null
-function log(msg){
-  const d=document.getElementById('debug')
-  if(d)d.textContent+='
-'+new Date().toLocaleTimeString()+': '+msg
-  console.log(msg)
+function loadSupabase(cb){
+  if(window.supabase){
+    log('supabase ya disponible');
+    cb();
+  }else{
+    const s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';
+    s.onload=function(){
+      log('supabase cargado via onload');
+      cb();
+    };
+    s.onerror=function(){
+      log('ERROR cargando supabase script');
+    };
+    document.head.appendChild(s);
+  }
 }
+document.addEventListener('DOMContentLoaded',function(){
+  log('DOM ready');
+  loadSupabase(function(){
+    try{
+      db=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+      log('db OK');
+    }catch(e){
+      log('ERROR createClient: '+e.message);
+      return;
+    }
+    document.getElementById('loginBtn').addEventListener('click',login);
+    document.getElementById('regBtn').addEventListener('click',register);
+    document.getElementById('logoutBtn').addEventListener('click',logout);
+    document.getElementById('saveBtn').addEventListener('click',saveEntry);
+    document.getElementById('loadDataBtn').addEventListener('click',loadAllData);
+    checkUser();
+  });
+});
 async function register(){
-const name=document.getElementById('regName').value
-const email=document.getElementById('regEmail').value
-const password=document.getElementById('regPassword').value
-if(!email||!password){showMessage('Completa todos los campos','error');return}
-const {data,error}=await supabase.auth.signUp({email,password,options:{data:{full_name:name,role:'patient'}}})
-if(error){showMessage('Error: '+error.message,'error')}
-else{showMessage('Registro exitoso. Revisa tu email para confirmar.')}
+  const name=document.getElementById('regName').value;
+  const email=document.getElementById('regEmail').value;
+  const password=document.getElementById('regPassword').value;
+  if(!email||!password){showMessage('Completa todos los campos','error');return;}
+  const {data,error}=await db.auth.signUp({email,password,options:{data:{full_name:name,role:'patient'}}});
+  if(error){showMessage('Error: '+error.message,'error');}
+  else{showMessage('Registro exitoso. Revisa tu email para confirmar.');}
 }
 async function login(){
-log('login() iniciado')
-const email=document.getElementById('loginEmail').value
-const password=document.getElementById('loginPassword').value
-log('email: '+email+', pass length: '+password.length)
-if(!email||!password){showMessage('Completa email y contraseña','error');return}
-try{
-log('llamando signInWithPassword...')
-const {data,error}=await supabase.auth.signInWithPassword({email,password})
-log('resultado - error: '+JSON.stringify(error)+', user: '+(data?.user?.email||'null'))
-if(error){showMessage('Error auth: '+error.message,'error');return}
-if(data&&data.user){
-log('user OK, cargando panel...')
-await loadUserPanel(data.user)
-}else{
-log('user es null despues de signIn')
-showMessage('Error: no se pudo obtener el usuario','error')
-}
-}catch(e){
-log('EXCEPCION: '+e.message)
-showMessage('Excepcion: '+e.message,'error')
-}
+  log('login click');
+  const email=document.getElementById('loginEmail').value;
+  const password=document.getElementById('loginPassword').value;
+  if(!email||!password){showMessage('Completa email y contraseña','error');return;}
+  try{
+    log('signIn...');
+    const {data,error}=await db.auth.signInWithPassword({email,password});
+    log('signIn done. error='+JSON.stringify(error)+' user='+(data&&data.user?data.user.email:'null'));
+    if(error){showMessage('Error: '+error.message,'error');return;}
+    if(data&&data.user){await loadUserPanel(data.user);}
+    else{showMessage('No se obtuvo el usuario','error');}
+  }catch(e){
+    log('EXC login: '+e.message);
+    showMessage('Excepcion: '+e.message,'error');
+  }
 }
 async function logout(){
-await supabase.auth.signOut()
-currentUser=null
-document.getElementById('loginScreen').classList.remove('hidden')
-document.getElementById('mainScreen').classList.add('hidden')
+  await db.auth.signOut();
+  currentUser=null;
+  document.getElementById('loginScreen').classList.remove('hidden');
+  document.getElementById('mainScreen').classList.add('hidden');
 }
 async function loadUserPanel(user){
-log('loadUserPanel para: '+user.email)
-currentUser=user
-try{
-const {data:profile,error:profileError}=await supabase.from('profiles').select('*').eq('id',user.id).single()
-log('profile result - error: '+JSON.stringify(profileError)+', profile: '+JSON.stringify(profile))
-if(profileError||!profile){
-showMessage('Error al cargar perfil: '+(profileError?.message||'Perfil no encontrado'),'error')
-return
-}
-document.getElementById('loginScreen').classList.add('hidden')
-document.getElementById('mainScreen').classList.remove('hidden')
-document.getElementById('userInfo').innerHTML='<p>👤 <strong>'+(profile.full_name||user.email)+'</strong> ('+profile.role+')</p>'
-if(profile.role==='admin'){
-document.getElementById('adminPanel').classList.remove('hidden')
-document.getElementById('patientPanel').classList.add('hidden')
-}else{
-document.getElementById('patientPanel').classList.remove('hidden')
-document.getElementById('adminPanel').classList.add('hidden')
-}
-}catch(e){
-log('EXCEPCION en loadUserPanel: '+e.message)
-showMessage('Excepcion perfil: '+e.message,'error')
-}
+  log('loadUserPanel: '+user.email);
+  currentUser=user;
+  try{
+    const {data:profile,error:pe}=await db.from('profiles').select('*').eq('id',user.id).single();
+    log('profile: err='+JSON.stringify(pe)+' data='+JSON.stringify(profile));
+    if(pe||!profile){showMessage('Error perfil: '+(pe?pe.message:'no encontrado'),'error');return;}
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('mainScreen').classList.remove('hidden');
+    document.getElementById('userInfo').innerHTML='<p>👤 <strong>'+(profile.full_name||user.email)+'</strong> ('+profile.role+')</p>';
+    if(profile.role==='admin'){
+      document.getElementById('adminPanel').classList.remove('hidden');
+      document.getElementById('patientPanel').classList.add('hidden');
+    }else{
+      document.getElementById('patientPanel').classList.remove('hidden');
+      document.getElementById('adminPanel').classList.add('hidden');
+    }
+  }catch(e){
+    log('EXC panel: '+e.message);
+    showMessage('Excepcion panel: '+e.message,'error');
+  }
 }
 async function checkUser(){
-log('checkUser iniciado')
-try{
-const {data:{user}}=await supabase.auth.getUser()
-log('getUser result: '+(user?.email||'null'))
-if(!user){log('no hay usuario activo');return}
-await loadUserPanel(user)
-}catch(e){
-log('EXCEPCION checkUser: '+e.message)
-}
+  log('checkUser');
+  try{
+    const {data:{user}}=await db.auth.getUser();
+    log('getUser: '+(user?user.email:'null'));
+    if(user){await loadUserPanel(user);}
+  }catch(e){
+    log('EXC checkUser: '+e.message);
+  }
 }
 async function saveEntry(){
-if(!currentUser){return}
-const entry={patient_id:currentUser.id,entry_type:document.getElementById('entryType').value,fatigue:parseInt(document.getElementById('fatigue').value)||null,pain:parseInt(document.getElementById('pain').value)||null,mood:parseInt(document.getElementById('mood').value)||null,notes:document.getElementById('notes').value||null}
-const {error}=await supabase.from('daily_entries').insert([entry])
-if(error){showEntryMessage('Error: '+error.message,'error')}
-else{showEntryMessage('✅ Registro guardado correctamente');document.getElementById('notes').value=''}
+  if(!currentUser){return;}
+  const entry={patient_id:currentUser.id,entry_type:document.getElementById('entryType').value,fatigue:parseInt(document.getElementById('fatigue').value)||null,pain:parseInt(document.getElementById('pain').value)||null,mood:parseInt(document.getElementById('mood').value)||null,notes:document.getElementById('notes').value||null};
+  const {error}=await db.from('daily_entries').insert([entry]);
+  if(error){showEntryMessage('Error: '+error.message,'error');}
+  else{showEntryMessage('✅ Guardado');document.getElementById('notes').value='';}
 }
 async function loadAllData(){
-const {data,error}=await supabase.from('daily_entries').select('*,profiles(full_name,email)').order('created_at',{ascending:false}).limit(50)
-if(error){document.getElementById('dataDisplay').innerHTML='<p class="alert-error">Error: '+error.message+'</p>';return}
-let html='<h3>Últimos 50 registros</h3><table style="width:100%;border-collapse:collapse;margin-top:16px"><tr style="background:#4a7c59;color:#fff"><th style="padding:8px">Paciente</th><th style="padding:8px">Fecha</th><th style="padding:8px">Tipo</th><th style="padding:8px">Fatiga</th><th style="padding:8px">Dolor</th><th style="padding:8px">Ánimo</th></tr>'
-data.forEach(e=>{html+='<tr><td style="padding:8px;border:1px solid #ddd">'+(e.profiles?.full_name||e.profiles?.email||'N/A')+'</td><td style="padding:8px;border:1px solid #ddd">'+new Date(e.created_at).toLocaleDateString()+'</td><td style="padding:8px;border:1px solid #ddd">'+e.entry_type+'</td><td style="padding:8px;border:1px solid #ddd">'+(e.fatigue||'-')+'</td><td style="padding:8px;border:1px solid #ddd">'+(e.pain||'-')+'</td><td style="padding:8px;border:1px solid #ddd">'+(e.mood||'-')+'</td></tr>'})
-html+='</table>'
-document.getElementById('dataDisplay').innerHTML=html
+  const {data,error}=await db.from('daily_entries').select('*,profiles(full_name,email)').order('created_at',{ascending:false}).limit(50);
+  if(error){document.getElementById('dataDisplay').innerHTML='<p style="color:red">Error: '+error.message+'</p>';return;}
+  let html='<h3>Últimos registros</h3><table style="width:100%;border-collapse:collapse"><tr style="background:#4a7c59;color:#fff"><th style="padding:8px">Paciente</th><th style="padding:8px">Fecha</th><th style="padding:8px">Tipo</th><th style="padding:8px">Fatiga</th><th style="padding:8px">Dolor</th><th style="padding:8px">Ánimo</th></tr>';
+  data.forEach(e=>{html+='<tr><td style="padding:8px;border:1px solid #ddd">'+(e.profiles?.full_name||e.profiles?.email||'N/A')+'</td><td style="padding:8px;border:1px solid #ddd">'+new Date(e.created_at).toLocaleDateString()+'</td><td style="padding:8px;border:1px solid #ddd">'+e.entry_type+'</td><td style="padding:8px;border:1px solid #ddd">'+(e.fatigue||'-')+'</td><td style="padding:8px;border:1px solid #ddd">'+(e.pain||'-')+'</td><td style="padding:8px;border:1px solid #ddd">'+(e.mood||'-')+'</td></tr>';});
+  html+='</table>';
+  document.getElementById('dataDisplay').innerHTML=html;
 }
 function showMessage(msg,type){
-document.getElementById('message').innerHTML='<div class="alert '+(type==='error'?'alert-error':'')+'">'+msg+'</div>'
+  document.getElementById('message').innerHTML='<div class="alert '+(type==='error'?'alert-error':'')+'">'+msg+'</div>';
 }
 function showEntryMessage(msg,type){
-document.getElementById('entryMessage').innerHTML='<div class="alert '+(type==='error'?'alert-error':'')+'">'+msg+'</div>'
-setTimeout(()=>{const e=document.getElementById('entryMessage');if(e)e.innerHTML=''},3000)
+  const el=document.getElementById('entryMessage');
+  el.innerHTML='<div class="alert '+(type==='error'?'alert-error':'')+'">'+msg+'</div>';
+  setTimeout(()=>{if(el)el.innerHTML='';},3000);
 }
-checkUser()
 </script>
 </body>
 </html>
