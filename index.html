@@ -162,7 +162,7 @@ async function loadUserPanel(user){
     document.getElementById('mainScreen').classList.remove('hidden');
     document.getElementById('userInfo').innerHTML='<p>👤 <strong>'+(profile.full_name||user.email)+'</strong> ('+profile.role+')</p>';
     if(profile.role==='admin'){
-      document.getElementById('adminPanel').classList.remove('hidden');
+      document.getElementById('adminPanel').classList.remove('hidden');loadAllData();
       document.getElementById('patientPanel').classList.add('hidden');
     }else{
       document.getElementById('patientPanel').classList.remove('hidden');
