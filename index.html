@@ -130,7 +130,7 @@ async function register(){
   else{showMessage('Registro exitoso. Revisa tu email para confirmar.');}
 }
 async function login(){
-  log('login click');
+  log('login click');alert('LOGIN! db='+(db?'OK':'NULL'));
   const email=document.getElementById('loginEmail').value;
   const password=document.getElementById('loginPassword').value;
   if(!email||!password){showMessage('Completa email y contraseña','error');return;}
