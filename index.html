@@ -162,8 +162,8 @@ async function loadUserPanel(user){
     document.getElementById('mainScreen').classList.remove('hidden');
     document.getElementById('userInfo').innerHTML='<p>👤 <strong>'+(profile.full_name||user.email)+'</strong> ('+profile.role+')</p>';
     if(profile.role==='admin'){
-      document.gedocument.getElementById('adminPanel').classList.remove('hidden');loadAllData();tElementById('dataDisplay').innerHTML=html;const seen=new Map();(data||[]).forEach(e=>{const p=e.profiles;if(e.patient_id&&p&&!seen.has(e.patient_id))seen.set(e.patient_id,p.full_name||p.email||'?');});const pf=document.getElementById('patientFilter');const ap=document.getElementById('adminMsgPatient');[pf,ap].forEach(sel=>{if(!sel)return;const prev=sel.value;sel.innerHTML='<option value="">-- Selecciona paciente --</option>';seen.forEach((name,id)=>{const o=document.createElement('option');o.value=id;o.textContent=name;sel.appendChild(o);});sel.value=prev;});}if(false){if(!pts)return;const pf=document.getElementById('patientFilter');const ap=document.getElementById('adminMsgPatient');[pf,ap].forEach(sel=>{if(!sel)return;const prev=sel.value;sel.innerHTML='<option value="">-- Selecciona paciente --</option>';pts.forEach(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=p.full_name||p.email;sel.appendChild(o);});sel.value=prev;});});
-      document.getElementById('patientPanel').classList.add('hidden');
+      document.getElementById('adminPanel').classList.remove('hidden');document.getElementById('patientPanel').classList.add('hidden');loadAllData();
+
     }else{
       document.getElementById('patientPanel').classList.remove('hidden');
       document.getElementById('adminPanel').classList.add('hidden');
