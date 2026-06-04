@@ -27,7 +27,7 @@ label{display:block;margin-top:12px;font-weight:bold}
 <div id="loginScreen">
 <h1>🏥 FSHD Seguimiento Diario</h1>
 <p>Sistema de seguimiento fisioterapeuta-paciente con base de datos en tiempo real</p>
-    <form class="section" onsubmit="login();return false;">
+        <form class="section" onsubmit="event.preventDefault();login();">
 <h2>Iniciar Sesión</h2>
 <input type="email" id="loginEmail" placeholder="Email">
 <input type="password" id="loginPassword" placeholder="Contraseña" autocomplete="off">
