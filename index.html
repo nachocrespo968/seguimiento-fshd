@@ -105,6 +105,7 @@ function loadSupabase(cb){
 }
 document.addEventListener('DOMContentLoaded',function(){
   log('DOM ready');
+    document.getElementById('loginBtn').addEventListener('click',login);
   loadSupabase(function(){
     try{
       db=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
@@ -114,7 +115,6 @@ document.addEventListener('DOMContentLoaded',function(){
       return;
     }
     /* login via onsubmit */
-        document.getElementById('loginBtn').addEventListener('click',login);
     document.getElementById('regBtn').addEventListener('click',register);
     document.getElementById('logoutBtn').addEventListener('click',logout);
     document.getElementById('saveBtn').addEventListener('click',saveEntry);
@@ -132,6 +132,7 @@ async function register(){
   else{showMessage('Registro exitoso. Revisa tu email para confirmar.');}
 }
 async function login(){ 
+  if(!db){showMessage('Sistema iniciando, inténtalo de nuevo','error');return;}
   const email=document.getElementById('loginEmail').value;
   const password=document.getElementById('loginPassword').value;
   if(!email||!password){showMessage('Completa email y contraseña','error');return;}
