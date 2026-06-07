@@ -116,7 +116,7 @@ document.addEventListener('DOMContentLoaded',function(){
     document.getElementById('regBtn').addEventListener('click',register);
     document.getElementById('logoutBtn').addEventListener('click',logout);
     document.getElementById('saveBtn').addEventListener('click',saveEntry);
-    document.getElementById('loadDataBtn').addEventListener('click',loadAllData);
+        const ldb=document.getElementById('loadDataBtn');if(ldb)ldb.addEventListener('click',loadAllData);
     checkUser();
   });
 });
@@ -136,7 +136,7 @@ async function login(){
   try{
     log('signIn...');
     if(!db){db=window.supabase.createClient('https://ncmrtimuqifhtirziimz.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5jbXJ0aW11cWlmaHRpcnppaW16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3MjY2NzYsImV4cCI6MjA5NTMwMjY3Nn0.NkprOy834fYBXHTWUsmJrqAeBkEW97gyXJiFu6lHKgs');
-      
+
     }const {data,error}=await db.auth.signInWithPassword({email,password});
     log('signIn done. error='+JSON.stringify(error)+' user='+(data&&data.user?data.user.email:'null'));
     if(error){showMessage('Error: '+error.message,'error');return;}
