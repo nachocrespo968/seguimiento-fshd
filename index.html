@@ -105,7 +105,6 @@ function loadSupabase(cb){
 }
 document.addEventListener('DOMContentLoaded',function(){
   log('DOM ready');
-    document.getElementById('loginBtn').addEventListener('click',login);
   loadSupabase(function(){
     try{
       db=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
