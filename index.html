@@ -27,11 +27,11 @@ label{display:block;margin-top:12px;font-weight:bold}
 <div id="loginScreen">
 <h1>🏥 FSHD Seguimiento Diario</h1>
 <p>Sistema de seguimiento fisioterapeuta-paciente con base de datos en tiempo real</p>
-        <form class="section" onsubmit="event.preventDefault();login();">
+            <form class="section" id="loginForm">
 <h2>Iniciar Sesión</h2>
 <input type="email" id="loginEmail" placeholder="Email">
 <input type="password" id="loginPassword" placeholder="Contraseña" autocomplete="off">
-    <button type="button" class="btn" id="loginBtn" onclick="login()">Entrar</button>
+        <button type="button" class="btn" id="loginBtn">Entrar</button>
 <p style="margin-top:16px"><small>¿Nuevo usuario? Regístrate primero</small></p>
     </form>
 <div class="section">
@@ -113,6 +113,7 @@ document.addEventListener('DOMContentLoaded',function(){
       return;
     }
     /* login via onsubmit */
+        document.getElementById('loginBtn').addEventListener('click',login);
     document.getElementById('regBtn').addEventListener('click',register);
     document.getElementById('logoutBtn').addEventListener('click',logout);
     document.getElementById('saveBtn').addEventListener('click',saveEntry);
