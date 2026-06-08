@@ -81,6 +81,7 @@ const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 let db=null;
 document.title='JS OK';
 let currentUser=null;
+let loggingIn=false;
 function log(m){
   // Updated
   const d=document.getElementById('debug');
@@ -106,11 +107,11 @@ function loadSupabase(cb){
 }
 document.addEventListener('DOMContentLoaded',function(){
   log('DOM ready');
-    document.getElementById('loginBtn').addEventListener('click',login);
   loadSupabase(function(){
     try{
       db=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
       log('db OK');
+      document.getElementById('loginBtn').addEventListener('click',login);
     }catch(e){
       log('ERROR createClient: '+e.message);
       return;
@@ -133,6 +134,7 @@ async function register(){
   else{showMessage('Registro exitoso. Revisa tu email para confirmar.');}
 }
 async function login(){ 
+  if(loggingIn)return;loggingIn=true;
   if(!db){showMessage('Sistema iniciando, inténtalo de nuevo','error');return;}
   const email=document.getElementById('loginEmail').value;
   const password=document.getElementById('loginPassword').value;
@@ -150,6 +152,7 @@ async function login(){
     log('EXC login: '+e.message);
     showMessage('Excepcion: '+e.message,'error');
   }
+  finally{loggingIn=false;}
 }
 async function logout(){
   await db.auth.signOut();
