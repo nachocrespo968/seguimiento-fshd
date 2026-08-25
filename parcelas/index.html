@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Planos Catastrales Georreferenciados</title>
+
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
+<script src="vendor/leaflet/leaflet.js"></script>
+<script src="vendor/proj4.js"></script>
+
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="app">
+
+  <aside class="sidebar">
+    <h1>🗺️ Planos Catastrales</h1>
+    <p class="subtitle">Sube archivos GML del Catastro (INSPIRE) y genera un plano georreferenciado sobre la ortofoto oficial del IGN (PNOA).</p>
+
+    <div class="section">
+      <h2>1. Cargar parcelas</h2>
+      <label for="gmlFiles">Archivo(s) GML del Catastro</label>
+      <input type="file" id="gmlFiles" accept=".gml,.xml" multiple>
+      <label class="checkbox-row">
+        <input type="checkbox" id="swapAxes">
+        Intercambiar ejes X/Y (marca esto si las parcelas aparecen giradas o fuera de sitio)
+      </label>
+      <button class="btn" id="loadBtn">Cargar y dibujar</button>
+      <div id="status" class="status"></div>
+    </div>
+
+    <div class="section">
+      <h2>2. Datos del plano</h2>
+      <label for="fincaName">Nombre de la finca</label>
+      <input type="text" id="fincaName" placeholder="Ej. Ahumada de Arriba">
+      <label for="baseLayer">Capa base</label>
+      <select id="baseLayer">
+        <option value="pnoa">Ortofoto PNOA (IGN)</option>
+        <option value="osm">OpenStreetMap</option>
+      </select>
+    </div>
+
+    <div class="section">
+      <h2>3. Parcelas cargadas</h2>
+      <div class="summary" id="summary">Ninguna parcela cargada todavía.</div>
+      <div id="parcelList" class="parcel-list"></div>
+    </div>
+
+    <div class="section">
+      <h2>4. Exportar</h2>
+      <button class="btn" id="printBtn">Imprimir / Exportar a PDF</button>
+      <button class="btn btn-secondary" id="csvBtn">Exportar listado (CSV)</button>
+    </div>
+
+    <p class="footnote">
+      Cartografía: Sede Electrónica del Catastro (GML/INSPIRE).<br>
+      Ortofoto: PNOA © Instituto Geográfico Nacional de España.<br>
+      Los datos no se envían a ningún servidor: el procesado del GML ocurre en tu navegador.
+    </p>
+  </aside>
+
+  <main class="map-wrap">
+    <div id="map"></div>
+
+    <div class="north-arrow" title="Norte">N ↑</div>
+
+    <div class="cajetin" id="cajetin">
+      <div class="cajetin-title" id="cajetinFinca">Plano de finca</div>
+      <div class="cajetin-row"><span>Fecha:</span><span id="cajetinDate"></span></div>
+      <div class="cajetin-row"><span>Parcelas:</span><span id="cajetinCount">—</span></div>
+      <div class="cajetin-row"><span>Superficie total:</span><span id="cajetinArea">—</span></div>
+      <div class="cajetin-source">Geometría: Catastro (GML/INSPIRE) · Ortofoto: PNOA © IGN</div>
+    </div>
+
+  </main>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
