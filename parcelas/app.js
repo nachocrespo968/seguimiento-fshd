@@ -301,6 +301,7 @@ function findAncestorSrsName(el) {
 
 function crsFromSrsName(srsName) {
   if (!srsName) return DEFAULT_CRS;
+  if (/4326/.test(srsName)) return 'EPSG:4326';
   const match = srsName.match(/258(2[89]|3[01])/);
   if (match) return 'EPSG:' + match[0];
   return DEFAULT_CRS;
@@ -313,10 +314,20 @@ function parsePosListToRing(posListEl, crsCode, swapAxes) {
   for (let i = 0; i + 1 < nums.length; i += dim) {
     let a = nums[i];
     let b = nums[i + 1];
-    const x = swapAxes ? b : a;
-    const y = swapAxes ? a : b;
-    const [lon, lat] = proj4(crsCode, 'WGS84', [x, y]);
-    ring.push([lat, lon]); // Leaflet expects [lat, lng]
+    if (crsCode === 'EPSG:4326') {
+      // The Catastro's WFS GetParcel stored query returns geometry already
+      // in WGS84 degrees (no reprojection needed), but per the OGC URN CRS
+      // convention its posList axis order is (lat, lon) — the opposite of
+      // the UTM (easting, northing) order used by manually downloaded GML.
+      const lat = swapAxes ? b : a;
+      const lon = swapAxes ? a : b;
+      ring.push([lat, lon]);
+    } else {
+      const x = swapAxes ? b : a;
+      const y = swapAxes ? a : b;
+      const [lon, lat] = proj4(crsCode, 'WGS84', [x, y]);
+      ring.push([lat, lon]); // Leaflet expects [lat, lng]
+    }
   }
   return ring;
 }
