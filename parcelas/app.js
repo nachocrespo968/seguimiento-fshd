@@ -134,6 +134,47 @@ async function handleLoadByRef() {
 }
 
 async function fetchParcelGML(ref) {
+  // The browser can't call the Catastro WFS directly: it doesn't send CORS
+  // headers, so a client-side fetch() gets blocked. Go through our own
+  // same-origin proxy (api/catastro.js, a Vercel serverless function) first;
+  // only fall back to a direct call if that proxy isn't deployed/reachable
+  // at all (e.g. the app is served as plain static files).
+  try {
+    return await fetchViaProxy(ref);
+  } catch (proxyErr) {
+    if (!proxyErr.proxyUnavailable) throw proxyErr;
+    return await fetchDirect(ref);
+  }
+}
+
+async function fetchViaProxy(ref) {
+  const url = `/api/catastro?ref=${encodeURIComponent(ref)}`;
+  let response;
+  try {
+    response = await fetch(url);
+  } catch (err) {
+    const e = new Error('no se pudo contactar con el proxy de la aplicación');
+    e.proxyUnavailable = true;
+    throw e;
+  }
+  if (response.status === 404) {
+    const e = new Error('el proxy de la aplicación no está desplegado');
+    e.proxyUnavailable = true;
+    throw e;
+  }
+  if (!response.ok) {
+    let detail = '';
+    try { detail = (await response.json()).error || ''; } catch (_) { /* ignore */ }
+    throw new Error(detail || `el Catastro respondió con error ${response.status}`);
+  }
+  const text = await response.text();
+  if (/ExceptionReport|ServiceExceptionReport/.test(text)) {
+    throw new Error('el Catastro no reconoce esa referencia catastral');
+  }
+  return text;
+}
+
+async function fetchDirect(ref) {
   const url = `${CATASTRO_WFS_URL}?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&STOREDQUERY_ID=GetParcel&REFCAT=${encodeURIComponent(ref)}`;
   let response;
   try {
