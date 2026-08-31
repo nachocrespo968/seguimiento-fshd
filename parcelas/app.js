@@ -80,6 +80,26 @@ function initMap() {
   baseLayers = { pnoa, osm };
   pnoa.addTo(map);
 
+  // If the PNOA WMS tiles fail to load (wrong CRS support, endpoint down,
+  // etc.) don't leave the user staring at a blank map: fall back to
+  // OpenStreetMap automatically and say so, instead of failing silently.
+  let pnoaTileErrors = 0;
+  let pnoaFallbackTriggered = false;
+  pnoa.on('tileerror', () => {
+    pnoaTileErrors++;
+    if (pnoaFallbackTriggered || pnoaTileErrors < 3 || !map.hasLayer(pnoa)) return;
+    pnoaFallbackTriggered = true;
+    map.removeLayer(pnoa);
+    osm.addTo(map);
+    const baseSelect = document.getElementById('baseLayer');
+    if (baseSelect) baseSelect.value = 'osm';
+    const el = document.getElementById('status');
+    if (el) {
+      el.textContent = 'No se pudo cargar la ortofoto PNOA del IGN, así que se ha cambiado a OpenStreetMap. Prueba el enlace "Probar ortofoto del IGN" del pie para ver el error exacto.';
+      el.classList.add('error');
+    }
+  });
+
   L.control.scale({ metric: true, imperial: false }).addTo(map);
 
   parcelLayerGroup = L.layerGroup().addTo(map);
