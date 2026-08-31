@@ -73,13 +73,26 @@ label {
 
 input[type="text"],
 input[type="file"],
-select {
+select,
+textarea {
   width: 100%;
   padding: 8px;
   border: 1px solid #cfc6b3;
   border-radius: 6px;
   font-size: 13px;
   background: #fff;
+  font-family: inherit;
+}
+
+textarea {
+  resize: vertical;
+}
+
+.hint {
+  font-size: 11px;
+  color: #777;
+  margin: 8px 0 0 0;
+  line-height: 1.4;
 }
 
 .btn {

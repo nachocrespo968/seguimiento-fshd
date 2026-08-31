@@ -14,8 +14,11 @@ let baseLayers = {};
 let parcelLayerGroup = null;
 let parcels = []; // {ref, areaM2, layer, bounds}
 
+const CATASTRO_WFS_URL = 'https://ovc.catastro.meh.es/INSPIRE/wfsCP.aspx';
+
 initMap();
 document.getElementById('loadBtn').addEventListener('click', handleLoad);
+document.getElementById('loadRefBtn').addEventListener('click', handleLoadByRef);
 document.getElementById('printBtn').addEventListener('click', () => window.print());
 document.getElementById('csvBtn').addEventListener('click', exportCSV);
 document.getElementById('baseLayer').addEventListener('change', switchBaseLayer);
@@ -63,8 +66,7 @@ async function handleLoad() {
     return;
   }
 
-  parcelLayerGroup.clearLayers();
-  parcels = [];
+  clearParcels();
   statusEl.textContent = 'Procesando...';
 
   const swapAxes = document.getElementById('swapAxes').checked;
@@ -82,18 +84,84 @@ async function handleLoad() {
     }
   }
 
-  renderParcelList();
-  updateCajetin();
-
-  if (parcels.length > 0) {
-    const group = L.featureGroup(parcels.map(p => p.layer));
-    map.fitBounds(group.getBounds(), { padding: [30, 30] });
-  }
+  finishLoad();
 
   statusEl.textContent = `Cargadas ${totalParsed} parcelas de ${files.length} archivo(s).`;
   if (errors.length) {
     statusEl.textContent += '\nErrores:\n' + errors.join('\n');
     statusEl.classList.add('error');
+  }
+}
+
+async function handleLoadByRef() {
+  const raw = document.getElementById('refInput').value;
+  const refs = [...new Set(raw.split(/[\n,;]+/).map(s => s.trim()).filter(Boolean))];
+  const statusEl = document.getElementById('status');
+  statusEl.classList.remove('error');
+
+  if (refs.length === 0) {
+    statusEl.textContent = 'Escribe al menos una referencia catastral.';
+    statusEl.classList.add('error');
+    return;
+  }
+
+  clearParcels();
+  const swapAxes = document.getElementById('swapAxes').checked;
+  let totalParsed = 0;
+  let errors = [];
+
+  for (const ref of refs) {
+    statusEl.textContent = `Consultando ${ref}... (${totalParsed + errors.length + 1}/${refs.length})`;
+    try {
+      const text = await fetchParcelGML(ref);
+      const found = parseGML(text, swapAxes);
+      if (found.length === 0) throw new Error('el Catastro no devolvió geometría para esta referencia');
+      found.forEach(p => addParcel(p));
+      totalParsed += found.length;
+    } catch (err) {
+      errors.push(`${ref}: ${err.message}`);
+    }
+  }
+
+  finishLoad();
+
+  statusEl.textContent = `Cargadas ${totalParsed} parcelas de ${refs.length} referencia(s).`;
+  if (errors.length) {
+    statusEl.textContent += '\nNo se pudieron cargar:\n' + errors.join('\n')
+      + '\n\nSi el fallo es de red/CORS, descarga el GML manualmente desde la Sede Electrónica del Catastro y súbelo con la opción "2. Alternativa: subir GML".';
+    statusEl.classList.add('error');
+  }
+}
+
+async function fetchParcelGML(ref) {
+  const url = `${CATASTRO_WFS_URL}?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&STOREDQUERY_ID=GetParcel&REFCAT=${encodeURIComponent(ref)}`;
+  let response;
+  try {
+    response = await fetch(url);
+  } catch (err) {
+    throw new Error('no se pudo contactar con el Catastro (red o CORS)');
+  }
+  if (!response.ok) {
+    throw new Error(`el Catastro respondió con error ${response.status}`);
+  }
+  const text = await response.text();
+  if (/ExceptionReport|ServiceExceptionReport/.test(text)) {
+    throw new Error('el Catastro no reconoce esa referencia catastral');
+  }
+  return text;
+}
+
+function clearParcels() {
+  parcelLayerGroup.clearLayers();
+  parcels = [];
+}
+
+function finishLoad() {
+  renderParcelList();
+  updateCajetin();
+  if (parcels.length > 0) {
+    const group = L.featureGroup(parcels.map(p => p.layer));
+    map.fitBounds(group.getBounds(), { padding: [30, 30] });
   }
 }
 

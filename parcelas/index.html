@@ -20,19 +20,30 @@
     <p class="subtitle">Sube archivos GML del Catastro (INSPIRE) y genera un plano georreferenciado sobre la ortofoto oficial del IGN (PNOA).</p>
 
     <div class="section">
-      <h2>1. Cargar parcelas</h2>
+      <h2>1. Cargar por referencia catastral</h2>
+      <label for="refInput">Referencia(s) catastral(es)</label>
+      <textarea id="refInput" rows="3" placeholder="06123A028000180000ET&#10;06123A028000190000EX&#10;(una por línea, o separadas por comas)"></textarea>
+      <button class="btn" id="loadRefBtn">Buscar y dibujar</button>
+      <p class="hint">Consulta directamente el servicio WFS del Catastro (INSPIRE). Si tu navegador la bloquea (CORS/red), usa la opción de abajo con el GML descargado manualmente.</p>
+    </div>
+
+    <div class="section">
+      <h2>2. Alternativa: subir GML</h2>
       <label for="gmlFiles">Archivo(s) GML del Catastro</label>
       <input type="file" id="gmlFiles" accept=".gml,.xml" multiple>
+      <button class="btn btn-secondary" id="loadBtn">Cargar y dibujar</button>
+    </div>
+
+    <div class="section">
       <label class="checkbox-row">
         <input type="checkbox" id="swapAxes">
         Intercambiar ejes X/Y (marca esto si las parcelas aparecen giradas o fuera de sitio)
       </label>
-      <button class="btn" id="loadBtn">Cargar y dibujar</button>
       <div id="status" class="status"></div>
     </div>
 
     <div class="section">
-      <h2>2. Datos del plano</h2>
+      <h2>3. Datos del plano</h2>
       <label for="fincaName">Nombre de la finca</label>
       <input type="text" id="fincaName" placeholder="Ej. Ahumada de Arriba">
       <label for="baseLayer">Capa base</label>
@@ -43,13 +54,13 @@
     </div>
 
     <div class="section">
-      <h2>3. Parcelas cargadas</h2>
+      <h2>4. Parcelas cargadas</h2>
       <div class="summary" id="summary">Ninguna parcela cargada todavía.</div>
       <div id="parcelList" class="parcel-list"></div>
     </div>
 
     <div class="section">
-      <h2>4. Exportar</h2>
+      <h2>5. Exportar</h2>
       <button class="btn" id="printBtn">Imprimir / Exportar a PDF</button>
       <button class="btn btn-secondary" id="csvBtn">Exportar listado (CSV)</button>
     </div>
