@@ -2,11 +2,6 @@
 // Entrada: GML del Catastro (esquema INSPIRE CadastralParcels)
 // Salida: mapa Leaflet con las parcelas sobre la ortofoto PNOA (WMS del IGN)
 
-proj4.defs('EPSG:25828', '+proj=utm +zone=28 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs');
-proj4.defs('EPSG:25829', '+proj=utm +zone=29 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs');
-proj4.defs('EPSG:25830', '+proj=utm +zone=30 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs');
-proj4.defs('EPSG:25831', '+proj=utm +zone=31 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs');
-
 const DEFAULT_CRS = 'EPSG:25830';
 
 let map = null;
@@ -16,13 +11,55 @@ let parcels = []; // {ref, areaM2, layer, bounds}
 
 const CATASTRO_WFS_URL = 'https://ovc.catastro.meh.es/INSPIRE/wfsCP.aspx';
 
-initMap();
-document.getElementById('loadBtn').addEventListener('click', handleLoad);
-document.getElementById('loadRefBtn').addEventListener('click', handleLoadByRef);
-document.getElementById('printBtn').addEventListener('click', () => window.print());
-document.getElementById('csvBtn').addEventListener('click', exportCSV);
-document.getElementById('baseLayer').addEventListener('change', switchBaseLayer);
-document.getElementById('fincaName').addEventListener('input', updateCajetin);
+init();
+
+function init() {
+  try {
+    if (typeof L === 'undefined') throw new Error('Leaflet no se cargó (vendor/leaflet/leaflet.js)');
+    if (typeof proj4 === 'undefined') throw new Error('proj4 no se cargó (vendor/proj4.js)');
+
+    proj4.defs('EPSG:25828', '+proj=utm +zone=28 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs');
+    proj4.defs('EPSG:25829', '+proj=utm +zone=29 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs');
+    proj4.defs('EPSG:25830', '+proj=utm +zone=30 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs');
+    proj4.defs('EPSG:25831', '+proj=utm +zone=31 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs');
+
+    initMap();
+
+    document.getElementById('loadBtn').addEventListener('click', wrapHandler(handleLoad));
+    document.getElementById('loadRefBtn').addEventListener('click', wrapHandler(handleLoadByRef));
+    document.getElementById('printBtn').addEventListener('click', () => window.print());
+    document.getElementById('csvBtn').addEventListener('click', wrapHandler(exportCSV));
+    document.getElementById('baseLayer').addEventListener('change', switchBaseLayer);
+    document.getElementById('fincaName').addEventListener('input', updateCajetin);
+  } catch (err) {
+    reportFatalError(err);
+  }
+}
+
+// Wraps a click handler so an unexpected exception shows up in the status
+// box instead of silently doing nothing (the browser only logs it to the
+// console, which most users never open).
+function wrapHandler(fn) {
+  return (...args) => {
+    try {
+      const result = fn(...args);
+      if (result && typeof result.catch === 'function') {
+        result.catch(reportFatalError);
+      }
+    } catch (err) {
+      reportFatalError(err);
+    }
+  };
+}
+
+function reportFatalError(err) {
+  console.error(err);
+  const el = document.getElementById('status');
+  if (el) {
+    el.textContent = 'Error inesperado: ' + (err && err.message ? err.message : err);
+    el.classList.add('error');
+  }
+}
 
 function initMap() {
   map = L.map('map', { zoomControl: true }).setView([40.0, -3.7], 6);
