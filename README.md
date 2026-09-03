@@ -20,6 +20,11 @@ georreferenciados:
 4. El resultado se puede imprimir o exportar a PDF (con cajetín, escala
    gráfica y listado de parcelas) y el listado de parcelas se puede exportar
    a CSV.
+5. Opcionalmente ("Mostrar parcelas colindantes", desactivado por defecto) la
+   herramienta consulta también todas las parcelas catastrales que rodean a
+   las cargadas (consulta espacial `BBOX` al mismo WFS, con un margen de 50 m)
+   y las dibuja en otro color, sin incluirlas en el listado ni en la
+   superficie total — solo como referencia visual.
 
 **Despliegue en Vercel** (recomendado): al desplegar el repo completo, Vercel
 detecta automáticamente `api/catastro.js` como función serverless — no

@@ -7,9 +7,11 @@ const DEFAULT_CRS = 'EPSG:25830';
 let map = null;
 let baseLayers = {};
 let parcelLayerGroup = null;
+let neighborLayerGroup = null;
 let parcels = []; // {ref, areaM2, layer, bounds}
 
 const CATASTRO_WFS_URL = 'https://ovc.catastro.meh.es/INSPIRE/wfsCP.aspx';
+const NEIGHBOR_MARGIN_M = 50;
 
 init();
 
@@ -31,6 +33,7 @@ function init() {
     document.getElementById('csvBtn').addEventListener('click', wrapHandler(exportCSV));
     document.getElementById('baseLayer').addEventListener('change', switchBaseLayer);
     document.getElementById('fincaName').addEventListener('input', updateCajetin);
+    document.getElementById('showNeighbors').addEventListener('change', wrapHandler(handleNeighborsToggle));
   } catch (err) {
     reportFatalError(err);
   }
@@ -103,6 +106,7 @@ function initMap() {
   L.control.scale({ metric: true, imperial: false }).addTo(map);
 
   parcelLayerGroup = L.layerGroup().addTo(map);
+  neighborLayerGroup = L.layerGroup().addTo(map);
   updateCajetin();
 }
 
@@ -190,22 +194,30 @@ async function handleLoadByRef() {
   }
 }
 
-async function fetchParcelGML(ref) {
+function fetchParcelGML(ref) {
+  return fetchCatastroGML(`ref=${encodeURIComponent(ref)}`, buildDirectRefUrl(ref), 'el Catastro no reconoce esa referencia catastral');
+}
+
+function fetchNeighborsGML(bboxStr) {
+  return fetchCatastroGML(`bbox=${encodeURIComponent(bboxStr)}`, buildDirectBboxUrl(bboxStr), 'el Catastro rechazó la consulta de parcelas colindantes');
+}
+
+async function fetchCatastroGML(proxyQuery, directUrl, rejectionMessage) {
   // The browser can't call the Catastro WFS directly: it doesn't send CORS
   // headers, so a client-side fetch() gets blocked. Go through our own
   // same-origin proxy (api/catastro.js, a Vercel serverless function) first;
   // only fall back to a direct call if that proxy isn't deployed/reachable
   // at all (e.g. the app is served as plain static files).
   try {
-    return await fetchViaProxy(ref);
+    return await fetchViaProxy(proxyQuery, rejectionMessage);
   } catch (proxyErr) {
     if (!proxyErr.proxyUnavailable) throw proxyErr;
-    return await fetchDirect(ref);
+    return await fetchDirect(directUrl, rejectionMessage);
   }
 }
 
-async function fetchViaProxy(ref) {
-  const url = `/api/catastro?ref=${encodeURIComponent(ref)}`;
+async function fetchViaProxy(queryString, rejectionMessage) {
+  const url = `/api/catastro?${queryString}`;
   let response;
   try {
     response = await fetch(url);
@@ -226,13 +238,12 @@ async function fetchViaProxy(ref) {
   }
   const text = await response.text();
   if (/ExceptionReport|ServiceExceptionReport/.test(text)) {
-    throw new Error('el Catastro no reconoce esa referencia catastral');
+    throw new Error(rejectionMessage);
   }
   return text;
 }
 
-async function fetchDirect(ref) {
-  const url = `${CATASTRO_WFS_URL}?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&STOREDQUERY_ID=GetParcel&REFCAT=${encodeURIComponent(ref)}`;
+async function fetchDirect(url, rejectionMessage) {
   let response;
   try {
     response = await fetch(url);
@@ -244,13 +255,25 @@ async function fetchDirect(ref) {
   }
   const text = await response.text();
   if (/ExceptionReport|ServiceExceptionReport/.test(text)) {
-    throw new Error('el Catastro no reconoce esa referencia catastral');
+    throw new Error(rejectionMessage);
   }
   return text;
 }
 
+function buildDirectRefUrl(ref) {
+  return `${CATASTRO_WFS_URL}?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&STOREDQUERY_ID=GetParcel&REFCAT=${encodeURIComponent(ref)}`;
+}
+
+function buildDirectBboxUrl(bboxStr) {
+  const crs = 'http://www.opengis.net/def/crs/EPSG/0/4326';
+  const namespaces = encodeURIComponent('xmlns(cp,http://inspire.ec.europa.eu/schemas/cp/4.0)');
+  const bboxParam = encodeURIComponent(`${bboxStr},${crs}`);
+  return `${CATASTRO_WFS_URL}?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&TYPENAMES=cp:CadastralParcel&NAMESPACES=${namespaces}&BBOX=${bboxParam}`;
+}
+
 function clearParcels() {
   parcelLayerGroup.clearLayers();
+  neighborLayerGroup.clearLayers();
   parcels = [];
 }
 
@@ -261,6 +284,60 @@ function finishLoad() {
     const group = L.featureGroup(parcels.map(p => p.layer));
     map.fitBounds(group.getBounds(), { padding: [30, 30] });
   }
+  if (document.getElementById('showNeighbors').checked) {
+    loadNeighbors();
+  }
+}
+
+// --- Parcelas colindantes ------------------------------------------------
+
+async function handleNeighborsToggle() {
+  if (document.getElementById('showNeighbors').checked) {
+    await loadNeighbors();
+  } else {
+    neighborLayerGroup.clearLayers();
+  }
+}
+
+async function loadNeighbors() {
+  neighborLayerGroup.clearLayers();
+  if (parcels.length === 0) return;
+
+  const statusEl = document.getElementById('status');
+  const bounds = L.featureGroup(parcels.map(p => p.layer)).getBounds();
+  const expanded = expandBoundsByMeters(bounds, NEIGHBOR_MARGIN_M);
+  const bboxStr = `${expanded.getSouth()},${expanded.getWest()},${expanded.getNorth()},${expanded.getEast()}`;
+  const ownRefs = new Set(parcels.map(p => p.ref));
+  const swapAxes = document.getElementById('swapAxes').checked;
+
+  try {
+    const text = await fetchNeighborsGML(bboxStr);
+    const found = parseGML(text, swapAxes);
+    let count = 0;
+    found.forEach(p => {
+      if (ownRefs.has(p.ref)) return; // it's one of the loaded parcels, not a neighbor
+      addNeighborParcel(p);
+      count++;
+    });
+    if (count === 0) {
+      statusEl.textContent += '\n(No se encontraron parcelas colindantes.)';
+    } else if (count >= 500) {
+      statusEl.textContent += `\n(Se muestran ${count} parcelas colindantes; puede que haya más sin cargar en zonas muy fragmentadas.)`;
+    }
+  } catch (err) {
+    statusEl.textContent += `\nNo se pudieron cargar las parcelas colindantes: ${err.message}`;
+    statusEl.classList.add('error');
+  }
+}
+
+function expandBoundsByMeters(bounds, meters) {
+  const lat = (bounds.getNorth() + bounds.getSouth()) / 2;
+  const dLat = meters / 111320;
+  const dLon = meters / (111320 * Math.cos(lat * Math.PI / 180));
+  return L.latLngBounds(
+    [bounds.getSouth() - dLat, bounds.getWest() - dLon],
+    [bounds.getNorth() + dLat, bounds.getEast() + dLon]
+  );
 }
 
 // --- GML parsing -----------------------------------------------------
@@ -406,20 +483,20 @@ function closestAncestorLocalName(el, name) {
 
 // --- Rendering ---------------------------------------------------------
 
-function addParcel(parsed) {
+function parsedRingsToLatLngs(parsed) {
   const exteriorRings = parsed.rings.filter(r => !r.isInterior).map(r => r.ring);
   const interiorRings = parsed.rings.filter(r => r.isInterior).map(r => r.ring);
 
   // L.polygon accepts [outer, hole1, hole2, ...] for a single polygon with holes,
   // or an array of such groups for a multi-polygon.
-  let latlngs;
   if (exteriorRings.length <= 1) {
-    latlngs = [ (exteriorRings[0] || []), ...interiorRings ];
-  } else {
-    latlngs = exteriorRings.map(r => [r]);
+    return [ (exteriorRings[0] || []), ...interiorRings ];
   }
+  return exteriorRings.map(r => [r]);
+}
 
-  const layer = L.polygon(latlngs, {
+function addParcel(parsed) {
+  const layer = L.polygon(parsedRingsToLatLngs(parsed), {
     color: '#c0392b',
     weight: 2,
     fillColor: '#e67e22',
@@ -434,6 +511,20 @@ function addParcel(parsed) {
   layer.addTo(parcelLayerGroup);
 
   parcels.push({ ref: parsed.ref, areaM2: parsed.areaM2, layer });
+}
+
+function addNeighborParcel(parsed) {
+  const layer = L.polygon(parsedRingsToLatLngs(parsed), {
+    color: '#2b6cb0',
+    weight: 1.5,
+    fillColor: '#63b3ed',
+    fillOpacity: 0.08,
+    dashArray: '4,3'
+  });
+
+  const ha = (parsed.areaM2 / 10000).toFixed(4);
+  layer.bindPopup(`<strong>Colindante: ${escapeHtml(parsed.ref)}</strong><br>${parsed.areaM2.toFixed(1)} m² (${ha} ha)`);
+  layer.addTo(neighborLayerGroup);
 }
 
 function renderParcelList() {
