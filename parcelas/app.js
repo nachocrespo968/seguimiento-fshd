@@ -271,6 +271,16 @@ function buildDirectBboxUrl(bboxStr) {
   return `${CATASTRO_WFS_URL}?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&TYPENAMES=cp:CadastralParcel&NAMESPACES=${namespaces}&BBOX=${bboxParam}`;
 }
 
+// Direct link to the parcel's own page on the Sede Electrónica del Catastro
+// (público, sin datos protegidos: no incluye el titular). The delegación and
+// municipio codes the page needs are just the first 5 characters of the
+// referencia catastral.
+function buildSedeCatastroUrl(ref) {
+  const del = ref.slice(0, 2);
+  const mun = ref.slice(2, 5);
+  return `https://www1.sedecatastro.gob.es/CYCBienInmueble/OVCConsultaDNPRC.aspx?RefC=${encodeURIComponent(ref)}&del=${encodeURIComponent(del)}&mun=${encodeURIComponent(mun)}`;
+}
+
 function clearParcels() {
   parcelLayerGroup.clearLayers();
   neighborLayerGroup.clearLayers();
@@ -523,7 +533,11 @@ function addNeighborParcel(parsed) {
   });
 
   const ha = (parsed.areaM2 / 10000).toFixed(4);
-  layer.bindPopup(`<strong>Colindante: ${escapeHtml(parsed.ref)}</strong><br>${parsed.areaM2.toFixed(1)} m² (${ha} ha)`);
+  const sedeUrl = buildSedeCatastroUrl(parsed.ref);
+  layer.bindPopup(
+    `<strong>Colindante: ${escapeHtml(parsed.ref)}</strong><br>${parsed.areaM2.toFixed(1)} m² (${ha} ha)` +
+    `<br><a href="${sedeUrl}" target="_blank" rel="noopener">Ver ficha en la Sede del Catastro</a>`
+  );
   layer.addTo(neighborLayerGroup);
 }
 
