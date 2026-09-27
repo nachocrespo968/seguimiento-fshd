@@ -278,7 +278,21 @@ function buildDirectBboxUrl(bboxStr) {
 function buildSedeCatastroUrl(ref) {
   const del = ref.slice(0, 2);
   const mun = ref.slice(2, 5);
-  return `https://www1.sedecatastro.gob.es/CYCBienInmueble/OVCConsultaDNPRC.aspx?RefC=${encodeURIComponent(ref)}&del=${encodeURIComponent(del)}&mun=${encodeURIComponent(mun)}`;
+  const params = new URLSearchParams({
+    UrbRus: 'R', // this app is for fincas rústicas; urban parcels would need 'U'
+    RefC: ref,
+    esBice: '',
+    RCBice1: '',
+    RCBice2: '',
+    DenoBice: '',
+    from: 'OVCBusqueda',
+    pest: 'rc',
+    RCCompleta: ref,
+    final: '',
+    del,
+    mun
+  });
+  return `https://www1.sedecatastro.gob.es/CYCBienInmueble/OVCConCiud.aspx?${params.toString()}`;
 }
 
 function clearParcels() {
