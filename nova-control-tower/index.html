@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NOVA Control Tower</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo" aria-hidden="true">◆</span>
+      <div>
+        <h1>NOVA Control Tower</h1>
+        <p class="sub" id="datasetInfo">Carga un CSV de expediciones para empezar</p>
+      </div>
+    </div>
+    <div class="actions">
+      <label class="btn primary">
+        <input type="file" id="fileInput" accept=".csv,text/csv" hidden>
+        Cargar CSV
+      </label>
+      <button class="btn" id="sampleBtn" type="button">Usar datos de ejemplo</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="emptyState" class="card empty">
+      <h2>Sin datos</h2>
+      <p>Arrastra aquí un CSV o pulsa <strong>Cargar CSV</strong>. Columnas esperadas (separador <code>,</code> o <code>;</code>):</p>
+      <code class="schema">id_expedicion, fecha_envio, fecha_prevista, fecha_entrega, cliente, pais, transportista, unidades_pedidas, unidades_entregadas, coste_eur, incidencia</code>
+      <p class="muted">Fechas en formato AAAA-MM-DD o DD/MM/AAAA. <code>incidencia</code> vacía = sin incidencia.</p>
+      <p id="errorMsg" class="error" role="alert"></p>
+    </section>
+
+    <div id="dashboard" hidden>
+      <section class="filters card" aria-label="Filtros">
+        <label>Cliente<select id="fCliente"></select></label>
+        <label>País<select id="fPais"></select></label>
+        <label>Transportista<select id="fTransportista"></select></label>
+        <button class="btn ghost" id="resetBtn" type="button">Limpiar filtros</button>
+      </section>
+
+      <section class="kpis">
+        <article class="card kpi">
+          <h3>OTIF global</h3>
+          <div class="kpi-value" id="kOtif">–</div>
+          <div class="kpi-foot" id="kOtifFoot"></div>
+        </article>
+        <article class="card kpi">
+          <h3>Retraso medio</h3>
+          <div class="kpi-value" id="kDelay">–</div>
+          <div class="kpi-foot" id="kDelayFoot"></div>
+        </article>
+        <article class="card kpi">
+          <h3>Coste medio por envío</h3>
+          <div class="kpi-value" id="kCost">–</div>
+          <div class="kpi-foot" id="kCostFoot"></div>
+        </article>
+        <article class="card kpi">
+          <h3>Envíos con incidencia</h3>
+          <div class="kpi-value" id="kInc">–</div>
+          <div class="kpi-foot" id="kIncFoot"></div>
+        </article>
+      </section>
+
+      <section class="grid2">
+        <article class="card">
+          <header class="card-h">
+            <h2>OTIF por transportista</h2>
+            <span class="legend"><i class="target-swatch"></i>Objetivo <span id="targetLbl"></span></span>
+          </header>
+          <div id="chartOtif" class="bars"></div>
+        </article>
+        <article class="card">
+          <header class="card-h"><h2>Incidencias por tipo</h2></header>
+          <div id="chartInc" class="bars"></div>
+        </article>
+      </section>
+
+      <section class="card insight">
+        <header class="card-h">
+          <h2><span class="spark" aria-hidden="true">✦</span> AI Insight</h2>
+          <span class="muted small">Generado automáticamente a partir de los datos filtrados</span>
+        </header>
+        <div class="insight-cols">
+          <div>
+            <h3>Hallazgos</h3>
+            <ol id="findings"></ol>
+          </div>
+          <div>
+            <h3>Acciones sugeridas</h3>
+            <ol id="actions"></ol>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <header class="card-h">
+          <h2>Detalle de expediciones</h2>
+          <span class="muted small" id="tableCount"></span>
+        </header>
+        <div class="table-wrap">
+          <table id="table">
+            <thead><tr>
+              <th data-k="id">Expedición</th>
+              <th data-k="cliente">Cliente</th>
+              <th data-k="pais">País</th>
+              <th data-k="transportista">Transportista</th>
+              <th data-k="fechaPrevista">Prevista</th>
+              <th data-k="fechaEntrega">Entrega</th>
+              <th data-k="retraso" class="num">Retraso (d)</th>
+              <th data-k="coste" class="num">Coste €</th>
+              <th data-k="otif">OTIF</th>
+              <th data-k="incidencia">Incidencia</th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <button class="btn ghost more" id="moreBtn" type="button" hidden>Mostrar más</button>
+      </section>
+    </div>
+  </main>
+
+  <div id="tooltip" class="tooltip" role="tooltip" hidden></div>
+  <div id="dropOverlay" class="drop-overlay" hidden>Suelta el CSV aquí</div>
+
+  <script src="sample-data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
