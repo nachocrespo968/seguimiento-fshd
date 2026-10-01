@@ -414,7 +414,8 @@
   }
 
   $("fileInput").addEventListener("change", (e) => { readFile(e.target.files[0]); e.target.value = ""; });
-  $("sampleBtn").addEventListener("click", () => load(window.NOVA_SAMPLE_CSV || "", "ejemplo_expediciones.csv"));
+  const loadSample = () => load(window.NOVA_SAMPLE_CSV || "", "Datos de ejemplo (ficticios)");
+  $("sampleBtn").addEventListener("click", loadSample);
   $("resetBtn").addEventListener("click", () => { FILTERS.forEach(([id]) => ($(id).value = "")); applyFilters(); });
   FILTERS.forEach(([id]) => $(id).addEventListener("change", applyFilters));
   $("moreBtn").addEventListener("click", () => { shown += PAGE; renderTable(); });
@@ -433,4 +434,6 @@
     e.preventDefault(); dragDepth = 0; $("dropOverlay").hidden = true;
     readFile(e.dataTransfer.files[0]);
   });
+  // Abre con los datos de ejemplo para que el dashboard se vea completo desde el primer momento
+  if (window.NOVA_SAMPLE_CSV) loadSample();
 })();
